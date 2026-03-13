@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Urgentia Granollers - Gestión Inteligente de Urgencias</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .safe-area-bottom { padding-bottom: env(safe-area-inset-bottom); }
+        .glass-nav { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(14px); }
+        .tab-content { display: none; animation: slideUp 0.3s ease-out; }
+        .tab-content.active { display: block; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .status-pulse { animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { transform: scale(0.95); opacity: 0.5; } 70% { transform: scale(1.1); opacity: 0; } 100% { transform: scale(0.95); opacity: 0; } }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+
+    <!-- PANTALLA DE AUTENTICACIÓN -->
+    <div id="login-overlay" class="fixed inset-0 z-[200] bg-slate-900 flex items-center justify-center p-6">
+        <div class="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden">
+            <div class="bg-blue-600 p-10 text-white text-center">
+                <div class="inline-block p-4 bg-white/10 rounded-3xl mb-4">
+                    <i data-lucide="activity" class="w-12 h-12 stroke-[2.5]"></i>
+                </div>
+                <h1 class="text-3xl font-extrabold uppercase tracking-tight">Urgentia</h1>
+                <p class="text-blue-100 text-sm font-medium opacity-80 uppercase tracking-widest">H. G. Granollers</p>
+            </div>
+            <form id="login-form" class="p-10 space-y-6">
+                <div class="space-y-2">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Usuario Interno</label>
+                    <input type="text" id="user" required class="w-full px-6 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-medium" placeholder="admin">
+                </div>
+                <div class="space-y-2">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Contraseña</label>
+                    <input type="password" id="pass" required class="w-full px-6 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-medium" placeholder="••••••••">
+                </div>
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-5 rounded-2xl shadow-xl shadow-blue-100 transition-all flex items-center justify-center gap-3 active:scale-95">
+                    <i data-lucide="shield-check"></i> Acceder al Servicio
+                </button>
+                <p class="text-[10px] text-center text-slate-400 font-medium uppercase tracking-tight">Acceso restringido • Cumplimiento RGPD Ley 3/2018</p>
+            </form>
+        </div>
+    </div>
+
+    <!-- CONTENIDO PRINCIPAL DE LA APP -->
+    <div id="main-app" class="hidden opacity-0 transition-opacity duration-500">
+        
+        <!-- HEADER FIJO -->
+        <header class="fixed top-0 left-0 right-0 h-20 glass-nav border-b border-slate-200 z-[100] px-6 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="bg-blue-600 p-2.5 rounded-2xl text-white shadow-lg shadow-blue-100">
+                    <i data-lucide="activity" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h2 class="text-base font-extrabold text-slate-800 leading-none">URGENTIA</h2>
+                    <span class="text-[9px] font-bold text-blue-600 uppercase tracking-tighter">Granollers Urgencias</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="hidden md:block text-right">
+                    <p class="text-xs font-bold text-slate-700" id="current-user-display">Admin Granollers</p>
+                    <p class="text-[9px] font-bold text-green-500 uppercase tracking-widest">En Turno</p>
+                </div>
+                <button onclick="logout()" class="w-10 h-10 flex items-center justify-center bg-slate-100 text-slate-500 rounded-xl hover:text-red-500 transition-colors">
+                    <i data-lucide="log-out" class="w-5 h-5"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- VISTAS -->
+        <main class="pt-24 pb-32 px-4 max-w-5xl mx-auto">
+
+            <!-- DASHBOARD / MÉTRICAS -->
+            <div id="dashboard" class="tab-content active space-y-6">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-200">
+                        <div class="text-orange-500 mb-2"><i data-lucide="trending-up"></i></div>
+                        <p class="text-[9px] font-bold text-slate-400 uppercase">Saturación</p>
+                        <p class="text-xl font-black">72%</p>
+                    </div>
+                    <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-200">
+                        <div class="text-blue-500 mb-2"><i data-lucide="users"></i></div>
+                        <p class="text-[9px] font-bold text-slate-400 uppercase">En Turno</p>
+                        <p id="stat-staff" class="text-xl font-black">0</p>
+                    </div>
+                    <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-200">
+                        <div class="text-red-500 mb-2"><i data-lucide="alert-circle"></i></div>
+                        <p class="text-[9px] font-bold text-slate-400 uppercase">Prioridad 1</p>
+                        <p class="text-xl font-black">3</p>
+                    </div>
+                    <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-200">
+                        <div class="text-green-500 mb-2"><i data-lucide="clock"></i></div>
+                        <p class="text-[9px] font-bold text-slate-400 uppercase">Media Triage</p>
+                        <p class="text-xl font-black">14m</p>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-[2.5rem] border border-slate-200 shadow-sm">
+                    <h3 class="text-lg font-bold mb-6 flex items-center gap-2">
+                        <i data-lucide="stethoscope" class="text-blue-600"></i> Estado del Servicio
+                    </h3>
+                    <div id="staff-live-grid" class="space-y-3">
+                        <!-- Generado por JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- ASIGNACIÓN INTELIGENTE (IA) -->
+            <div id="ai-matching" class="tab-content space-y-6">
+                <div class="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="bg-indigo-100 p-3 rounded-2xl text-indigo-600"><i data-lucide="brain"></i></div>
+                        <div>
+                            <h2 class="text-xl font-bold">Asignación Automática</h2>
+                            <p class="text-xs text-slate-400">Análisis multimodal del informe del paciente</p>
+                        </div>
+                    </div>
+
+                    <div class="space-y-5">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="space-y-2">
+                                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">ID Paciente</label>
+                                <input type="text" id="ai-patient-id" class="w-full p-4 bg-slate-50 rounded-2xl border border-slate-100 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-bold" placeholder="PAC-001">
+                            </div>
+                            <div class="space-y-2">
+                                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Nivel Triage</label>
+                                <select id="ai-urgency" class="w-full p-4 bg-slate-50 rounded-2xl border border-slate-100 outline-none font-bold text-sm">
+                                    <option value="1">Nivel 1 (Resucitación)</option>
+                                    <option value="2">Nivel 2 (Emergencia)</option>
+                                    <option value="3" selected>Nivel 3 (Urgente)</option>
+                                    <option value="4">Nivel 4 (Menos Urgente)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="space-y-2">
+                            <div class="flex justify-between items-center px-1">
+                                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Informe Clínico / Nota de Voz</label>
+                                <div class="flex gap-2">
+                                    <button onclick="simulateAudio()" class="p-2 text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"><i data-lucide="mic" class="w-4 h-4"></i></button>
+                                </div>
+                            </div>
+                            <textarea id="ai-content" class="w-full h-40 p-5 bg-slate-50 rounded-[2rem] border border-slate-100 outline-none focus:bg-white transition-all text-sm leading-relaxed" placeholder="Escriba los síntomas detectados o transcriba nota de voz..."></textarea>
+                        </div>
+
+                        <button onclick="processAI()" id="ai-btn" class="w-full py-5 bg-indigo-600 text-white rounded-2xl font-bold shadow-xl shadow-indigo-100 flex items-center justify-center gap-3 active:scale-[0.98] transition-all">
+                            <i data-lucide="zap"></i> Ejecutar IA de Asignación
+                        </button>
+                    </div>
+                </div>
+
+                <!-- RESULTADO DE IA -->
+                <div id="ai-loading" class="hidden py-12 text-center animate-pulse">
+                    <div class="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                    <p class="text-xs font-bold text-indigo-600 uppercase tracking-widest">Consultando carga y competencias...</p>
+                </div>
+
+                <div id="ai-result" class="hidden bg-indigo-900 rounded-[3rem] p-8 text-white shadow-2xl animate-in fade-in zoom-in duration-500">
+                    <div class="flex justify-between items-start mb-8">
+                        <div>
+                            <span class="px-3 py-1 bg-white/10 rounded-full text-[10px] font-bold uppercase tracking-widest">Propuesta Sugerida</span>
+                            <h3 id="res-specialty" class="text-3xl font-black mt-2 tracking-tight">Cardiología</h3>
+                        </div>
+                        <div class="bg-white/10 p-4 rounded-2xl text-center min-w-[100px]">
+                            <p class="text-[9px] font-bold opacity-60 uppercase">Match</p>
+                            <p id="res-score" class="text-3xl font-black">92%</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-[2rem] p-6 text-slate-900">
+                        <div class="flex items-center gap-4 mb-6">
+                            <div class="w-14 h-14 bg-indigo-100 rounded-2xl flex items-center justify-center text-indigo-600 font-bold text-xl" id="res-avatar">M</div>
+                            <div>
+                                <p id="res-name" class="font-black text-xl leading-none">Dr. Marc Soler</p>
+                                <p id="res-role" class="text-xs font-bold text-indigo-600 uppercase mt-1">Adjunto • Experto RCP</p>
+                            </div>
+                        </div>
+                        <div class="space-y-4 mb-6">
+                            <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                <p class="text-[10px] font-black text-slate-400 uppercase mb-1">Justificación de la IA</p>
+                                <p id="res-reason" class="text-sm font-medium leading-relaxed italic">"Paciente con dolor torácico. El Dr. Soler es especialista en Cardiología con la carga más baja del turno actual (32%)."</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="confirmAsign()" class="flex-1 py-4 bg-indigo-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-indigo-700">
+                                <i data-lucide="check-circle"></i> Confirmar
+                            </button>
+                            <button onclick="resetAI()" class="px-5 py-4 bg-slate-100 text-slate-400 rounded-xl hover:bg-slate-200">
+                                <i data-lucide="refresh-ccw"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ADMINISTRACIÓN / PERSONAL -->
+            <div id="admin" class="tab-content space-y-6">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-2xl font-extrabold">Gestión de Equipo</h2>
+                    <button onclick="openStaffModal()" class="bg-slate-900 text-white px-5 py-3 rounded-2xl font-bold text-sm flex items-center gap-2 shadow-lg">
+                        <i data-lucide="plus"></i> Añadir Profesional
+                    </button>
+                </div>
+
+                <div class="bg-white rounded-[2.5rem] border border-slate-200 overflow-hidden shadow-sm">
+                    <table class="w-full text-left">
+                        <thead class="bg-slate-50 border-b border-slate-100">
+                            <tr class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                <th class="px-6 py-4">Profesional</th>
+                                <th class="px-6 py-4">Especialidad</th>
+                                <th class="px-6 py-4">Rol</th>
+                                <th class="px-6 py-4 text-right">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-table-body" class="divide-y divide-slate-50">
+                            <!-- JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- FORMACIÓN / E-LEARNING -->
+            <div id="education" class="tab-content space-y-6">
+                <div class="bg-blue-900 rounded-[3rem] p-10 text-white">
+                    <div class="flex items-center gap-4 mb-6">
+                        <div class="bg-blue-600 p-4 rounded-3xl"><i data-lucide="graduation-cap" class="w-8 h-8"></i></div>
+                        <div>
+                            <h2 class="text-2xl font-black tracking-tight">Carencias Formativas</h2>
+                            <p class="text-blue-300 text-xs">Recomendaciones basadas en la demanda real del Hospital</p>
+                        </div>
+                    </div>
+                    <div class="space-y-4">
+                        <div class="bg-white/10 p-6 rounded-[2rem] border border-white/10 flex items-center justify-between">
+                            <div>
+                                <h4 class="font-bold">Protocolo TAVI Urgente</h4>
+                                <p class="text-[10px] text-blue-200 font-medium mt-1">Detectada alta demanda en cardiología</p>
+                            </div>
+                            <button class="bg-blue-600 px-4 py-2 rounded-xl font-bold text-xs uppercase">Iniciar</button>
+                        </div>
+                        <div class="bg-white/10 p-6 rounded-[2rem] border border-white/10 flex items-center justify-between">
+                            <div>
+                                <h4 class="font-bold">Ecografía en Punto de Atención</h4>
+                                <p class="text-[10px] text-blue-200 font-medium mt-1">Mejora recomendada para enfermería</p>
+                            </div>
+                            <button class="bg-blue-600 px-4 py-2 rounded-xl font-bold text-xs uppercase">Iniciar</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-white p-6 rounded-[2rem] border border-slate-200 text-center">
+                        <div class="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-3"><i data-lucide="award"></i></div>
+                        <p class="text-xl font-black">12</p>
+                        <p class="text-[9px] font-bold text-slate-400 uppercase">Insignias Totales</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-[2rem] border border-slate-200 text-center">
+                        <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-3"><i data-lucide="book-open"></i></div>
+                        <p class="text-xl font-black">4</p>
+                        <p class="text-[9px] font-bold text-slate-400 uppercase">Cursos Activos</p>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- NAVEGACIÓN TAB BAR (MÓVIL) -->
+        <nav class="fixed bottom-6 left-1/2 -translate-x-1/2 glass-nav border border-slate-200 p-2 rounded-full shadow-2xl z-[150] flex items-center gap-1 md:gap-3 px-4">
+            <button onclick="setTab('dashboard')" class="nav-item active flex items-center gap-2 px-5 py-3 rounded-full text-slate-400 transition-all duration-300">
+                <i data-lucide="layout-grid" class="w-5 h-5"></i>
+                <span class="text-[10px] font-black uppercase hidden md:inline">Inicio</span>
+            </button>
+            <button onclick="setTab('ai-matching')" class="nav-item flex items-center gap-2 px-5 py-3 rounded-full text-slate-400 transition-all duration-300">
+                <i data-lucide="brain" class="w-5 h-5"></i>
+                <span class="text-[10px] font-black uppercase hidden md:inline">IA Match</span>
+            </button>
+            <button onclick="setTab('education')" class="nav-item flex items-center gap-2 px-5 py-3 rounded-full text-slate-400 transition-all duration-300">
+                <i data-lucide="graduation-cap" class="w-5 h-5"></i>
+                <span class="text-[10px] font-black uppercase hidden md:inline">Formación</span>
+            </button>
+            <button onclick="setTab('admin')" class="nav-item flex items-center gap-2 px-5 py-3 rounded-full text-slate-400 transition-all duration-300">
+                <i data-lucide="settings" class="w-5 h-5"></i>
+                <span class="text-[10px] font-black uppercase hidden md:inline">Equipo</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- MODAL AÑADIR PERSONAL -->
+    <div id="modal-staff" class="fixed inset-0 z-[300] bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md rounded-[2.5rem] p-8 shadow-2xl scale-95 transition-all">
+            <h3 class="text-2xl font-extrabold mb-6">Nuevo Profesional</h3>
+            <div class="space-y-4">
+                <div class="space-y-2">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase">Nombre Completo</label>
+                    <input type="text" id="m-name" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase">Rol</label>
+                        <select id="m-role" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold text-sm">
+                            <option>Médico</option>
+                            <option>Enfermería</option>
+                            <option>Residente</option>
+                        </select>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase">Especialidad</label>
+                        <select id="m-spec" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold text-sm">
+                            <option>Triaje</option>
+                            <option>Cardiología</option>
+                            <option>Pediatría</option>
+                            <option>Traumatología</option>
+                            <option>General</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex gap-3 pt-4">
+                    <button onclick="closeStaffModal()" class="flex-1 py-4 bg-slate-100 text-slate-500 rounded-xl font-bold">Cancelar</button>
+                    <button onclick="saveStaff()" class="flex-1 py-4 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-100">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- BASE DE DATOS MOCK ---
+        let profesionales = [
+            { id: 1, nombre: 'Dr. Marc Soler', especialidad: 'Cardiología', rol: 'Médico Adjunto', carga: 32, pacientes: 2, exp: 5 },
+            { id: 2, nombre: 'Dra. Elena Bosch', especialidad: 'Pediatría', rol: 'Médico Adjunto', carga: 65, pacientes: 5, exp: 4 },
+            { id: 3, nombre: 'Pol Martínez', especialidad: 'Triaje', rol: 'Enfermería', carga: 15, pacientes: 1, exp: 5 },
+            { id: 4, nombre: 'Laura Ribas', especialidad: 'Traumatología', rol: 'Médico Adjunto', carga: 48, pacientes: 3, exp: 3 }
+        ];
+
+        // --- NAVEGACIÓN Y LOGIN ---
+        document.getElementById('login-form').onsubmit = (e) => {
+            e.preventDefault();
+            const u = document.getElementById('user').value;
+            const p = document.getElementById('pass').value;
+            
+            if(u === 'admin' && p === 'admin') {
+                document.getElementById('login-overlay').style.display = 'none';
+                const main = document.getElementById('main-app');
+                main.classList.remove('hidden');
+                setTimeout(() => main.classList.add('opacity-100'), 50);
+                init();
+            } else {
+                alert("Acceso denegado. Verifique credenciales.");
+            }
+        };
+
+        function logout() { location.reload(); }
+
+        function setTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            
+            document.querySelectorAll('.nav-item').forEach(btn => {
+                btn.classList.remove('active', 'bg-blue-600', 'text-white', 'shadow-xl', 'shadow-blue-100');
+                btn.classList.add('text-slate-400');
+            });
+            
+            const activeBtn = event.currentTarget;
+            activeBtn.classList.add('active', 'bg-blue-600', 'text-white', 'shadow-xl', 'shadow-blue-100');
+            activeBtn.classList.remove('text-slate-400');
+        }
+
+        // --- LÓGICA DE NEGOCIO ---
+        function init() {
+            lucide.createIcons();
+            renderStaffGrid();
+            renderAdminTable();
+        }
+
+        function renderStaffGrid() {
+            const grid = document.getElementById('staff-live-grid');
+            grid.innerHTML = '';
+            profesionales.forEach(p => {
+                const color = p.carga > 80 ? 'red' : p.carga > 50 ? 'orange' : 'green';
+                grid.innerHTML += `
+                    <div class="flex items-center justify-between p-4 bg-slate-50 hover:bg-white border border-slate-100 rounded-2xl transition-all group cursor-pointer">
+                        <div class="flex items-center gap-4">
+                            <div class="relative">
+                                <div class="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center font-bold text-blue-600">${p.nombre[0]}</div>
+                                <div class="absolute -top-1 -right-1 w-3 h-3 bg-${color}-500 rounded-full border-2 border-slate-50 status-pulse"></div>
+                            </div>
+                            <div>
+                                <p class="text-sm font-bold text-slate-800">${p.nombre}</p>
+                                <p class="text-[9px] font-bold text-slate-400 uppercase">${p.especialidad} • ${p.rol}</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-[10px] font-bold text-slate-500 uppercase">${p.carga}% CARGA</p>
+                            <div class="w-12 h-1 bg-slate-200 rounded-full mt-1 overflow-hidden">
+                                <div class="h-full bg-${color}-500" style="width: ${p.carga}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            document.getElementById('stat-staff').innerText = profesionales.length;
+        }
+
+        function renderAdminTable() {
+            const body = document.getElementById('admin-table-body');
+            body.innerHTML = '';
+            profesionales.forEach(p => {
+                body.innerHTML += `
+                    <tr class="hover:bg-slate-50/50 transition-colors">
+                        <td class="px-6 py-4 text-sm font-bold text-slate-700">${p.nombre}</td>
+                        <td class="px-6 py-4 text-xs font-medium text-slate-500">${p.especialidad}</td>
+                        <td class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">${p.rol}</td>
+                        <td class="px-6 py-4 text-right">
+                            <button onclick="removeStaff(${p.id})" class="text-slate-300 hover:text-red-500 transition-colors"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                        </td>
+                    </tr>
+                `;
+            });
+            lucide.createIcons();
+        }
+
+        // --- MOTOR DE INTELIGENCIA ARTIFICIAL ---
+        function processAI() {
+            const content = document.getElementById('ai-content').value.toLowerCase();
+            if(!content) return alert("Por favor, introduzca datos clínicos para analizar.");
+
+            document.getElementById('ai-btn').classList.add('opacity-50', 'pointer-events-none');
+            document.getElementById('ai-loading').classList.remove('hidden');
+            document.getElementById('ai-result').classList.add('hidden');
+
+            setTimeout(() => {
+                // Algoritmo de detección de especialidad simplificado
+                let detectedSpec = 'General';
+                if(content.includes('pecho') || content.includes('corazón') || content.includes('infarto')) detectedSpec = 'Cardiología';
+                else if(content.includes('niño') || content.includes('bebé') || content.includes('pediatría')) detectedSpec = 'Pediatría';
+                else if(content.includes('brazo') || content.includes('fractura') || content.includes('caída')) detectedSpec = 'Traumatología';
+
+                // Lógica de Matching (Competencia + Carga de Trabajo)
+                let scoring = profesionales.map(p => {
+                    let score = 0;
+                    if(p.especialidad === detectedSpec) score += 60;
+                    score += (100 - p.carga) * 0.4; // Menor carga es mejor
+                    return { ...p, score: Math.min(Math.round(score), 99) };
+                }).sort((a,b) => b.score - a.score);
+
+                const best = scoring[0];
+
+                // Render Result
+                document.getElementById('res-specialty').innerText = detectedSpec;
+                document.getElementById('res-score').innerText = best.score + '%';
+                document.getElementById('res-name').innerText = best.nombre;
+                document.getElementById('res-role').innerText = `${best.rol} • ${best.especialidad}`;
+                document.getElementById('res-avatar').innerText = best.nombre[0];
+                document.getElementById('res-reason').innerText = `Detección de síntomas asociados a ${detectedSpec}. ${best.nombre} tiene la mayor experiencia en el área y una carga de trabajo óptima (${best.carga}%).`;
+
+                document.getElementById('ai-loading').classList.add('hidden');
+                document.getElementById('ai-result').classList.remove('hidden');
+                document.getElementById('ai-btn').classList.remove('opacity-50', 'pointer-events-none');
+                lucide.createIcons();
+            }, 1800);
+        }
+
+        function confirmAsign() {
+            alert("Paciente asignado y registrado en el historial del profesional.");
+            resetAI();
+            setTab('dashboard');
+        }
+
+        function resetAI() {
+            document.getElementById('ai-result').classList.add('hidden');
+            document.getElementById('ai-content').value = '';
+            document.getElementById('ai-patient-id').value = '';
+        }
+
+        function simulateAudio() {
+            const btn = event.currentTarget;
+            btn.classList.add('bg-red-50', 'text-red-500', 'animate-pulse');
+            setTimeout(() => {
+                document.getElementById('ai-content').value = "Paciente varón de 62 años con dolor precordial opresivo desde hace 40 minutos. Sudoración fría y náuseas. Posible sospecha de SCA.";
+                btn.classList.remove('bg-red-50', 'text-red-500', 'animate-pulse');
+            }, 2000);
+        }
+
+        // --- MODAL STAFF ---
+        function openStaffModal() { document.getElementById('modal-staff').style.display = 'flex'; }
+        function closeStaffModal() { document.getElementById('modal-staff').style.display = 'none'; }
+        
+        function saveStaff() {
+            const n = document.getElementById('m-name').value;
+            const r = document.getElementById('m-role').value;
+            const s = document.getElementById('m-spec').value;
+            if(!n) return;
+            
+            profesionales.push({
+                id: Date.now(),
+                nombre: n,
+                especialidad: s,
+                rol: r,
+                carga: 0,
+                pacientes: 0,
+                exp: 3
+            });
+            
+            closeStaffModal();
+            renderStaffGrid();
+            renderAdminTable();
+        }
+
+        function removeStaff(id) {
+            profesionales = profesionales.filter(p => p.id !== id);
+            renderStaffGrid();
+            renderAdminTable();
+        }
+    </script>
+</body>
+</html>
